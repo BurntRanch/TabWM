@@ -4,6 +4,9 @@
 extern "C" {
     #include <wlr/backend.h>
     #include <wlr/render/interface.h>
+    #include <wlr/render/allocator.h>
+    #include <wlr/render/drm_format_set.h>
+    #include <drm/drm_fourcc.h>
 }
 
 struct tabwm_wl_server {
@@ -24,6 +27,8 @@ struct tabwm_output {
 
     struct wl_listener output_rmd_listener;
     struct wl_listener frame_listener;
+
+    struct wlr_buffer *buffer;
 
     struct wl_list link;
 };

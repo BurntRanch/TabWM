@@ -15,8 +15,30 @@ static void output_frame(struct wl_listener *listener, void *data) {
 
     struct wlr_renderer *renderer = output->renderer;
 
-    wlr_output_begin_render_pass(output, NULL, NULL, NULL);
-    wlr_renderer_begin_buffer_pass(renderer, output->allocator)
+    struct wlr_render_pass *render_pass = wlr_output_begin_render_pass(output, NULL, NULL, NULL);
+    // wlr_renderer_begin_buffer_pass(renderer, wm_output->buffer, NULL);
+
+    struct wlr_box box{};
+    box.x = 0;
+    box.y = 0;
+    box.width = output->current_mode->width * 0.5;
+    box.height = output->current_mode->height * 0.5;
+
+    struct wlr_render_color color{};
+    color.r = 1.0f;
+    color.g = 0.0f;
+    color.b = 0.0f;
+    color.a = 1.0f;
+
+    struct wlr_render_rect_options rect_options{};
+    rect_options.blend_mode = WLR_RENDER_BLEND_MODE_NONE;
+    rect_options.box = box;
+    rect_options.clip = NULL;
+    rect_options.color = color;
+
+    wlr_render_pass_add_rect(render_pass, &rect_options);
+
+    wlr_render_pass_submit(render_pass);
 }
 
 static void new_output(struct wl_listener *listener, void *data) {
@@ -31,8 +53,6 @@ static void new_output(struct wl_listener *listener, void *data) {
         wlr_output_state_set_mode(&state, mode);
     }
 
-    struct wlr_buffer *buffer = wlr_buffer
-
     wlr_output_commit_state(output, &state);
     wlr_output_state_finish(&state);
 
@@ -46,6 +66,14 @@ static void new_output(struct wl_listener *listener, void *data) {
     wl_signal_add(&output->events.destroy, &wm_output->output_rmd_listener);
     wm_output->frame_listener.notify = output_frame;
     wl_signal_add(&output->events.frame, &wm_output->frame_listener);
+
+
+    struct wlr_drm_format_set format_set{};
+
+    wlr_drm_format_set_add(&format_set, output->render_format, DRM_FORMAT_MOD_LINEAR);
+    assert(format_set.len == 1);
+
+    wm_output->buffer = wlr_allocator_create_buffer(output->allocator, output->current_mode->width, output->current_mode->height, format_set.formats);
 }
 
 int main(int argc, char **argv) {
@@ -56,12 +84,12 @@ int main(int argc, char **argv) {
     server.event_loop = wl_display_get_event_loop(server.display);
     assert(server.event_loop);
 
-    server.backend = wlr_backend_autocreate(server.display, nullptr);
+    server.backend = wlr_backend_autocreate(server.event_loop, nullptr);
     assert(server.backend);
 
     wl_list_init(&server.device_outputs);
 
-    server.new_output_listener.notify = 
+    server.new_output_listener.notify = new_output;
 
     if (!wlr_backend_start(server.backend)) {
         fmt::println("fatal: wlr_backend_start returned false");
