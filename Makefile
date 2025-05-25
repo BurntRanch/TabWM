@@ -28,7 +28,7 @@ TARGET		?= $(NAME)
 VERSION    	 = 0.0.1
 SRC 	   	 = $(wildcard src/*.cpp)
 OBJ 	   	 = $(SRC:.cpp=.o)
-LDFLAGS   	+= -lfmt -L/usr/lib64 -lwlroots -lwayland-server -lxkbcommon
+LDFLAGS   	+= -lfmt -L/usr/lib64 -lwlroots-0.18 -lwayland-server -lxkbcommon
 CXXFLAGS  	?= -mtune=generic -march=native
 CXXFLAGS        += -fvisibility=hidden -Iinclude -I/usr/include/pixman-1 -std=c++20 $(VARS)
 
