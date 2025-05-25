@@ -5,24 +5,28 @@
 static void rm_output(struct wl_listener *listener, void *data) {
     struct tabwm_output *wm_output = wl_container_of(listener, wm_output, output_rmd_listener);
     wl_list_remove(&wm_output->link);
+    wl_list_remove(&wm_output->frame_listener.link);
     wl_list_remove(&wm_output->output_rmd_listener.link);
     free(wm_output);
 }
 
 static void output_frame(struct wl_listener *listener, void *data) {
+    fmt::println("Frame!");
+
     struct tabwm_output *wm_output = wl_container_of(listener, wm_output, frame_listener);
     struct wlr_output *output = wm_output->output;
 
-    struct wlr_renderer *renderer = output->renderer;
+    struct wlr_output_state state{};
+    wlr_output_state_init(&state);
 
-    struct wlr_render_pass *render_pass = wlr_output_begin_render_pass(output, NULL, NULL, NULL);
-    // wlr_renderer_begin_buffer_pass(renderer, wm_output->buffer, NULL);
+    struct wlr_render_pass *render_pass = wlr_output_begin_render_pass(output, &state, NULL, NULL);
+    // wlr_renderer_begin_buffer_pass(renderer, wm_output->state.buffer, NULL);
 
     struct wlr_box box{};
     box.x = 0;
     box.y = 0;
-    box.width = output->current_mode->width * 0.5;
-    box.height = output->current_mode->height * 0.5;
+    box.width = 400;
+    box.height = 400;
 
     struct wlr_render_color color{};
     color.r = 1.0f;
@@ -39,24 +43,23 @@ static void output_frame(struct wl_listener *listener, void *data) {
     wlr_render_pass_add_rect(render_pass, &rect_options);
 
     wlr_render_pass_submit(render_pass);
-}
-
-static void new_output(struct wl_listener *listener, void *data) {
-    struct tabwm_wl_server *server = wl_container_of(listener, server, new_output_listener);
-    struct wlr_output *output = reinterpret_cast<wlr_output *>(data);
-
-    struct wlr_output_state state{};
-    wlr_output_state_init(&state);
-
-    if (!wl_list_empty(&output->modes)) {
-        struct wlr_output_mode *mode = wl_container_of(output->modes.prev, mode, link);
-        wlr_output_state_set_mode(&state, mode);
-    }
 
     wlr_output_commit_state(output, &state);
     wlr_output_state_finish(&state);
 
+    clock_gettime(CLOCK_MONOTONIC, &wm_output->last_frame_presented);
+}
+
+static void new_output(struct wl_listener *listener, void *data) {
+    fmt::println("New output!");
+
+    struct tabwm_wl_server *server = wl_container_of(listener, server, new_output_listener);
+    struct wlr_output *output = reinterpret_cast<wlr_output *>(data);
+   
+    wlr_output_init_render(output, server->allocator, server->renderer);
+    
     struct tabwm_output *wm_output = reinterpret_cast<tabwm_output *>(calloc(1, sizeof(tabwm_output)));
+
     clock_gettime(CLOCK_MONOTONIC, &wm_output->last_frame_presented);
     wm_output->server = server;
     wm_output->output = output;
@@ -67,13 +70,18 @@ static void new_output(struct wl_listener *listener, void *data) {
     wm_output->frame_listener.notify = output_frame;
     wl_signal_add(&output->events.frame, &wm_output->frame_listener);
 
+    struct wlr_output_state state{};
+    wlr_output_state_init(&state);
+    wlr_output_state_set_enabled(&state, true);
 
-    struct wlr_drm_format_set format_set{};
+    struct wlr_output_mode *mode = wlr_output_preferred_mode(output);
 
-    wlr_drm_format_set_add(&format_set, output->render_format, DRM_FORMAT_MOD_LINEAR);
-    assert(format_set.len == 1);
+    if (mode != NULL) {
+        wlr_output_state_set_mode(&state, mode);
+    }
 
-    wm_output->buffer = wlr_allocator_create_buffer(output->allocator, output->current_mode->width, output->current_mode->height, format_set.formats);
+    wlr_output_commit_state(output, &state);
+    wlr_output_state_finish(&state);
 }
 
 int main(int argc, char **argv) {
@@ -87,9 +95,15 @@ int main(int argc, char **argv) {
     server.backend = wlr_backend_autocreate(server.event_loop, nullptr);
     assert(server.backend);
 
+    server.renderer = wlr_renderer_autocreate(server.backend);
+    assert(server.renderer);
+    server.allocator = wlr_allocator_autocreate(server.backend, server.renderer);
+    assert(server.allocator);
+
     wl_list_init(&server.device_outputs);
 
     server.new_output_listener.notify = new_output;
+    wl_signal_add(&server.backend->events.new_output, &server.new_output_listener);
 
     if (!wlr_backend_start(server.backend)) {
         fmt::println("fatal: wlr_backend_start returned false");

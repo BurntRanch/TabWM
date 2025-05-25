@@ -17,6 +17,9 @@ struct tabwm_wl_server {
 
     struct wl_listener new_output_listener;
 
+    struct wlr_renderer *renderer;
+    struct wlr_allocator *allocator;
+
     struct wl_list device_outputs;
 };
 
@@ -27,8 +30,6 @@ struct tabwm_output {
 
     struct wl_listener output_rmd_listener;
     struct wl_listener frame_listener;
-
-    struct wlr_buffer *buffer;
 
     struct wl_list link;
 };
