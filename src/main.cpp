@@ -25,8 +25,10 @@ static void output_frame(struct wl_listener *listener, void *data) {
     struct wlr_box box{};
     box.x = 0;
     box.y = 0;
-    box.width = 400;
-    box.height = 400;
+    box.width = output->width;
+    box.height = output->height;
+
+    fmt::println("width: {}, height: {}", box.width, box.height);
 
     struct wlr_render_color color{};
     color.r = 1.0f;
