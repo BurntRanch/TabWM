@@ -138,8 +138,13 @@ static void new_input(struct wl_listener *listener, void *data) {
     fmt::println(log_fd, "New input (name: {}, ptr: {})!", input->name, fmt::ptr(data));
     fflush(log_fd);
 
-    if (input->type != WLR_INPUT_DEVICE_KEYBOARD) {
+    if (input->type != WLR_INPUT_DEVICE_KEYBOARD || strcmp(input->name, "Power Button") == 0) {
         fmt::println(log_fd, "Ignoring non-keyboard input device.");
+        
+        if (input->type == WLR_INPUT_DEVICE_KEYBOARD) {
+            fmt::println(log_fd, "WARN: this input device is a power button pretending to be a keyboard. So we have disabled it.");
+        }
+
         fflush(log_fd);
         return;
     }
