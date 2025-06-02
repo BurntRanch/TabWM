@@ -38,7 +38,10 @@ static void output_frame(struct wl_listener *listener, void *data) {
     bool any_recent_inputs = false;
     struct tabwm_input *wm_input;
     wl_list_for_each(wm_input, &server->device_inputs, link) {
-        if (difftime(wm_output->last_frame_presented.tv_sec, wm_input->last_event_handled.tv_sec) < 5) {
+        double timediff = difftime(wm_output->last_frame_presented.tv_sec, wm_input->last_event_handled.tv_sec);
+        fmt::println(log_fd, "input {} has had a key event {}s ago!", fmt::ptr(wm_input->input), timediff);
+        fflush(log_fd);
+        if (timediff < 5.0) {
             any_recent_inputs = true;
             break;
         }
