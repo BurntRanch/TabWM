@@ -3,6 +3,7 @@
 #include <tabwm_server.hpp>
 #include <cassert>
 #include <fmt/base.h>
+#include <fmt/format.h>
 #include <wayland-server-core.h>
 #include <wayland-util.h>
 
@@ -116,12 +117,14 @@ static void rm_input(struct wl_listener *listener, void *data) {
 }
 
 static void input_key(struct wl_listener *listener, void *data) {
-    struct tabwm_input *input = wl_container_of(listener, input, input_event_listener);
-    clock_gettime(CLOCK_MONOTONIC, &input->last_event_handled);
+    struct tabwm_input *wm_input = wl_container_of(listener, wm_input, input_event_listener);
+    fmt::println(log_fd, "Key event from input {}!", fmt::ptr(wm_input->input));
+    fflush(log_fd);
+    clock_gettime(CLOCK_MONOTONIC, &wm_input->last_event_handled);
 }
 
 static void new_input(struct wl_listener *listener, void *data) {
-    fmt::println(log_fd, "New input!");
+    fmt::println(log_fd, "New input ({})!", fmt::ptr(data));
     fflush(log_fd);
 
     struct tabwm_wl_server *server = wl_container_of(listener, server, new_input_listener);
