@@ -41,7 +41,7 @@ static void output_frame(struct wl_listener *listener, void *data) {
         double timediff = difftime(wm_output->last_frame_presented.tv_sec, wm_input->last_event_handled.tv_sec);
         fmt::println(log_fd, "input {} has had a key event {}s ago!", fmt::ptr(wm_input->input), timediff);
         fflush(log_fd);
-        if (timediff < 5.0) {
+        if (timediff < 1.0) {
             any_recent_inputs = true;
             break;
         }
@@ -70,6 +70,8 @@ static void output_frame(struct wl_listener *listener, void *data) {
 
     fmt::println(log_fd, "Finished frame!");
     fflush(log_fd);
+
+    wlr_output_schedule_frame(output);
 }
 
 static void new_output(struct wl_listener *listener, void *data) {
@@ -80,7 +82,7 @@ static void new_output(struct wl_listener *listener, void *data) {
     struct wlr_output *output = reinterpret_cast<wlr_output *>(data);
    
     wlr_output_init_render(output, server->allocator, server->renderer);
-    
+
     struct tabwm_output *wm_output = reinterpret_cast<tabwm_output *>(calloc(1, sizeof(tabwm_output)));
 
     clock_gettime(CLOCK_MONOTONIC, &wm_output->last_frame_presented);
