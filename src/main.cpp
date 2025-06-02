@@ -38,7 +38,10 @@ static void output_frame(struct wl_listener *listener, void *data) {
     bool any_recent_inputs = false;
     struct tabwm_input *wm_input;
     wl_list_for_each(wm_input, &server->device_inputs, link) {
-        if (difftime(wm_output->last_frame_presented.tv_sec, wm_input->last_event_handled.tv_sec) < 5) {
+        double timediff = difftime(wm_output->last_frame_presented.tv_sec, wm_input->last_event_handled.tv_sec);
+        fmt::println(log_fd, "input {} has had a key event {}s ago!", fmt::ptr(wm_input->input), timediff);
+        fflush(log_fd);
+        if (timediff < 1.0) {
             any_recent_inputs = true;
             break;
         }
@@ -64,6 +67,11 @@ static void output_frame(struct wl_listener *listener, void *data) {
     wlr_output_state_finish(&state);
 
     clock_gettime(CLOCK_MONOTONIC, &wm_output->last_frame_presented);
+
+    fmt::println(log_fd, "Finished frame!");
+    fflush(log_fd);
+
+    wlr_output_schedule_frame(output);
 }
 
 static void new_output(struct wl_listener *listener, void *data) {
@@ -74,7 +82,7 @@ static void new_output(struct wl_listener *listener, void *data) {
     struct wlr_output *output = reinterpret_cast<wlr_output *>(data);
    
     wlr_output_init_render(output, server->allocator, server->renderer);
-    
+
     struct tabwm_output *wm_output = reinterpret_cast<tabwm_output *>(calloc(1, sizeof(tabwm_output)));
 
     clock_gettime(CLOCK_MONOTONIC, &wm_output->last_frame_presented);
@@ -124,20 +132,25 @@ static void input_key(struct wl_listener *listener, void *data) {
 }
 
 static void new_input(struct wl_listener *listener, void *data) {
-    fmt::println(log_fd, "New input ({})!", fmt::ptr(data));
-    fflush(log_fd);
-
     struct tabwm_wl_server *server = wl_container_of(listener, server, new_input_listener);
     struct wlr_input_device *input = reinterpret_cast<wlr_input_device *>(data);
 
-    if (input->type != WLR_INPUT_DEVICE_KEYBOARD) {
+    fmt::println(log_fd, "New input (name: {}, ptr: {})!", input->name, fmt::ptr(data));
+    fflush(log_fd);
+
+    if (input->type != WLR_INPUT_DEVICE_KEYBOARD || strcmp(input->name, "Power Button") == 0) {
         fmt::println(log_fd, "Ignoring non-keyboard input device.");
+        
+        if (input->type == WLR_INPUT_DEVICE_KEYBOARD) {
+            fmt::println(log_fd, "WARN: this input device is a power button pretending to be a keyboard. So we have disabled it.");
+        }
+
         fflush(log_fd);
         return;
     }
 
     struct wlr_keyboard *keyboard = wlr_keyboard_from_input_device(input);
-    
+
     struct tabwm_input *wm_input = reinterpret_cast<tabwm_input *>(calloc(1, sizeof(tabwm_input)));
     wm_input->server = server;
     wm_input->input = input;
