@@ -67,6 +67,9 @@ static void output_frame(struct wl_listener *listener, void *data) {
     wlr_output_state_finish(&state);
 
     clock_gettime(CLOCK_MONOTONIC, &wm_output->last_frame_presented);
+
+    fmt::println(log_fd, "Finished frame!");
+    fflush(log_fd);
 }
 
 static void new_output(struct wl_listener *listener, void *data) {
@@ -140,7 +143,7 @@ static void new_input(struct wl_listener *listener, void *data) {
     }
 
     struct wlr_keyboard *keyboard = wlr_keyboard_from_input_device(input);
-    
+
     struct tabwm_input *wm_input = reinterpret_cast<tabwm_input *>(calloc(1, sizeof(tabwm_input)));
     wm_input->server = server;
     wm_input->input = input;
