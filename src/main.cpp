@@ -132,11 +132,11 @@ static void input_key(struct wl_listener *listener, void *data) {
 }
 
 static void new_input(struct wl_listener *listener, void *data) {
-    fmt::println(log_fd, "New input ({})!", fmt::ptr(data));
-    fflush(log_fd);
-
     struct tabwm_wl_server *server = wl_container_of(listener, server, new_input_listener);
     struct wlr_input_device *input = reinterpret_cast<wlr_input_device *>(data);
+
+    fmt::println(log_fd, "New input (name: {}, ptr: {})!", input->name, fmt::ptr(data));
+    fflush(log_fd);
 
     if (input->type != WLR_INPUT_DEVICE_KEYBOARD) {
         fmt::println(log_fd, "Ignoring non-keyboard input device.");
