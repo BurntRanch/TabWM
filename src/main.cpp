@@ -1,9 +1,12 @@
+#include <cstdio>
 #include <ctime>
 #include <tabwm_server.hpp>
 #include <cassert>
 #include <fmt/base.h>
 #include <wayland-server-core.h>
 #include <wayland-util.h>
+
+FILE *log_fd = nullptr;
 
 static void rm_output(struct wl_listener *listener, void *data) {
     struct tabwm_output *wm_output = wl_container_of(listener, wm_output, output_rmd_listener);
@@ -63,7 +66,8 @@ static void output_frame(struct wl_listener *listener, void *data) {
 }
 
 static void new_output(struct wl_listener *listener, void *data) {
-    fmt::println("New output!");
+    fmt::println(log_fd, "New output!");
+    fflush(log_fd);
 
     struct tabwm_wl_server *server = wl_container_of(listener, server, new_output_listener);
     struct wlr_output *output = reinterpret_cast<wlr_output *>(data);
@@ -117,13 +121,15 @@ static void input_key(struct wl_listener *listener, void *data) {
 }
 
 static void new_input(struct wl_listener *listener, void *data) {
-    fmt::println("New input!");
+    fmt::println(log_fd, "New input!");
+    fflush(log_fd);
 
     struct tabwm_wl_server *server = wl_container_of(listener, server, new_input_listener);
     struct wlr_input_device *input = reinterpret_cast<wlr_input_device *>(data);
 
     if (input->type != WLR_INPUT_DEVICE_KEYBOARD) {
-        fmt::println("Ignoring non-keyboard input device.");
+        fmt::println(log_fd, "Ignoring non-keyboard input device.");
+        fflush(log_fd);
         return;
     }
 
@@ -172,6 +178,8 @@ int main(int argc, char **argv) {
     wl_signal_add(&server.backend->events.new_output, &server.new_output_listener);
     server.new_input_listener.notify = new_input;
     wl_signal_add(&server.backend->events.new_input, &server.new_input_listener);
+
+    log_fd = fopen("log.txt", "w+");
 
     if (!wlr_backend_start(server.backend)) {
         fmt::println("fatal: wlr_backend_start returned false");

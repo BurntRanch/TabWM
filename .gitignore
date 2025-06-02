@@ -1,5 +1,7 @@
 build*/
 
+log.txt
+
 *.tar.*
 *.mo
 
