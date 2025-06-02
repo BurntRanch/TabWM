@@ -1,6 +1,9 @@
+#include <ctime>
 #include <tabwm_server.hpp>
 #include <cassert>
 #include <fmt/base.h>
+#include <wayland-server-core.h>
+#include <wayland-util.h>
 
 static void rm_output(struct wl_listener *listener, void *data) {
     struct tabwm_output *wm_output = wl_container_of(listener, wm_output, output_rmd_listener);
@@ -11,9 +14,8 @@ static void rm_output(struct wl_listener *listener, void *data) {
 }
 
 static void output_frame(struct wl_listener *listener, void *data) {
-    fmt::println("Frame!");
-
     struct tabwm_output *wm_output = wl_container_of(listener, wm_output, frame_listener);
+    struct tabwm_wl_server *server = wm_output->server;
     struct wlr_output *output = wm_output->output;
 
     struct wlr_output_state state{};
@@ -25,15 +27,23 @@ static void output_frame(struct wl_listener *listener, void *data) {
     struct wlr_box box{};
     box.x = 0;
     box.y = 0;
-    box.width = output->width;
-    box.height = output->height;
+    box.width = 400;
+    box.height = 400;
 
-    fmt::println("width: {}, height: {}", box.width, box.height);
+    /* If there were any recent inputs, set this to true so that we can change the color. */
+    bool any_recent_inputs = false;
+    struct tabwm_input *wm_input;
+    wl_list_for_each(wm_input, &server->device_inputs, link) {
+        if (difftime(wm_output->last_frame_presented.tv_sec, wm_input->last_event_handled.tv_sec) < 5) {
+            any_recent_inputs = true;
+            break;
+        }
+    }
 
     struct wlr_render_color color{};
-    color.r = 1.0f;
-    color.g = 0.0f;
-    color.b = 0.0f;
+    color.r = 1.0f * !any_recent_inputs;
+    color.g = 1.0f * any_recent_inputs;
+    color.b = 1.0f * any_recent_inputs;
     color.a = 1.0f;
 
     struct wlr_render_rect_options rect_options{};
@@ -65,7 +75,14 @@ static void new_output(struct wl_listener *listener, void *data) {
     clock_gettime(CLOCK_MONOTONIC, &wm_output->last_frame_presented);
     wm_output->server = server;
     wm_output->output = output;
-    wl_list_insert(&wm_output->link, &wm_output->link);
+    
+    int size = wl_list_length(&server->device_outputs);
+    wl_list *tail = &server->device_outputs;
+    for (int i = 0; i < size; i++) {
+        tail = tail->next;
+    }
+
+    wl_list_insert(tail, &wm_output->link);
 
     wm_output->output_rmd_listener.notify = rm_output;
     wl_signal_add(&output->events.destroy, &wm_output->output_rmd_listener);
@@ -86,6 +103,52 @@ static void new_output(struct wl_listener *listener, void *data) {
     wlr_output_state_finish(&state);
 }
 
+static void rm_input(struct wl_listener *listener, void *data) {
+    struct tabwm_input *wm_input = wl_container_of(listener, wm_input, input_rmd_listener);
+    wl_list_remove(&wm_input->link);
+    wl_list_remove(&wm_input->input_event_listener.link);
+    wl_list_remove(&wm_input->input_rmd_listener.link);
+    free(wm_input);
+}
+
+static void input_key(struct wl_listener *listener, void *data) {
+    struct tabwm_input *input = wl_container_of(listener, input, input_event_listener);
+    clock_gettime(CLOCK_MONOTONIC, &input->last_event_handled);
+}
+
+static void new_input(struct wl_listener *listener, void *data) {
+    fmt::println("New input!");
+
+    struct tabwm_wl_server *server = wl_container_of(listener, server, new_input_listener);
+    struct wlr_input_device *input = reinterpret_cast<wlr_input_device *>(data);
+
+    if (input->type != WLR_INPUT_DEVICE_KEYBOARD) {
+        fmt::println("Ignoring non-keyboard input device.");
+        return;
+    }
+
+    struct wlr_keyboard *keyboard = wlr_keyboard_from_input_device(input);
+    
+    struct tabwm_input *wm_input = reinterpret_cast<tabwm_input *>(calloc(1, sizeof(tabwm_input)));
+    wm_input->server = server;
+    wm_input->input = input;
+
+    clock_gettime(CLOCK_MONOTONIC, &wm_input->last_event_handled);
+
+    wm_input->input_event_listener.notify = input_key;
+    wl_signal_add(&keyboard->events.key, &wm_input->input_event_listener);
+    wm_input->input_rmd_listener.notify = rm_input;
+    wl_signal_add(&input->events.destroy, &wm_input->input_rmd_listener);
+
+    int size = wl_list_length(&server->device_inputs);
+    wl_list *tail = &server->device_inputs;
+    for (int i = 0; i < size; i++) {
+        tail = tail->next;
+    }
+
+    wl_list_insert(tail, &wm_input->link);
+}
+
 int main(int argc, char **argv) {
     struct tabwm_wl_server server{};
 
@@ -102,10 +165,13 @@ int main(int argc, char **argv) {
     server.allocator = wlr_allocator_autocreate(server.backend, server.renderer);
     assert(server.allocator);
 
+    wl_list_init(&server.device_inputs);
     wl_list_init(&server.device_outputs);
 
     server.new_output_listener.notify = new_output;
     wl_signal_add(&server.backend->events.new_output, &server.new_output_listener);
+    server.new_input_listener.notify = new_input;
+    wl_signal_add(&server.backend->events.new_input, &server.new_input_listener);
 
     if (!wlr_backend_start(server.backend)) {
         fmt::println("fatal: wlr_backend_start returned false");
