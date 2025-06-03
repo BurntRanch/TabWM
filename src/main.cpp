@@ -34,6 +34,8 @@ int main() {
     wl_signal_add(&server.backend->events.new_input, &server.new_input_listener);
 
     server.log_fd = stdout;
+    
+    server.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
     if (!wlr_backend_start(server.backend)) {
         fmt::println("fatal: wlr_backend_start returned false");

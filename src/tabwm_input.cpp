@@ -1,10 +1,12 @@
 #include "tabwm_input.hpp"
 #include "tabwm_server.hpp"
+#include <cassert>
 #include <csignal>
 #include <cstdint>
 #include <fmt/format.h>
 #include <unistd.h>
 #include <wayland-server-core.h>
+#include <xkbcommon/xkbcommon.h>
 
 void rm_input(struct wl_listener *listener, void *_) {
     struct tabwm_input *wm_input = wl_container_of(listener, wm_input, input_rmd_listener);
@@ -18,13 +20,18 @@ void input_key(struct wl_listener *listener, void *data) {
     struct tabwm_input *wm_input = wl_container_of(listener, wm_input, input_event_listener);
     struct tabwm_wl_server *server = wm_input->server;
 
+    struct wlr_keyboard *keyboard = wlr_keyboard_from_input_device(wm_input->input);
+
     fmt::println(server->log_fd, "Key event from input {}!", fmt::ptr(wm_input->input));
     fflush(server->log_fd);
 
     struct wlr_keyboard_key_event *key_event = reinterpret_cast<wlr_keyboard_key_event *>(data);
     uint32_t xkb_keycode = key_event->keycode + 8;
 
-    uint32_t modifiers = wlr_keyboard_get_modifiers(wlr_keyboard_from_input_device(wm_input->input));
+    uint32_t modifiers = wlr_keyboard_get_modifiers(keyboard);
+
+    fmt::println(server->log_fd, "modifiers: {}", modifiers);
+    fflush(server->log_fd);
 
     /* if Win-ESC is pressed, terminate the display. (only once) */
     if ((modifiers & WLR_MODIFIER_LOGO) && xkb_keycode == 9 && !server->is_quitting) {
@@ -54,6 +61,15 @@ void new_input(struct wl_listener *listener, void *data) {
     }
 
     struct wlr_keyboard *keyboard = wlr_keyboard_from_input_device(input);
+
+    struct xkb_rule_names rule_names{};
+    rule_names.rules = "base";
+    rule_names.layout = "us";
+    rule_names.model = "pc105";
+
+    struct xkb_keymap *keymap = xkb_keymap_new_from_names(server->xkb_context, &rule_names, XKB_KEYMAP_COMPILE_NO_FLAGS);
+
+    assert(wlr_keyboard_set_keymap(keyboard, keymap));
 
     struct tabwm_input *wm_input = reinterpret_cast<tabwm_input *>(calloc(1, sizeof(tabwm_input)));
     wm_input->server = server;

@@ -3,6 +3,7 @@
 #include <wayland-server-core.h>
 #include <wayland-server.h>
 #include <wayland-util.h>
+#include <xkbcommon/xkbcommon.h>
 
 extern "C" {
     #include <wlr/backend.h>
@@ -11,12 +12,15 @@ extern "C" {
     #include <wlr/render/interface.h>
     #include <wlr/render/allocator.h>
     #include <wlr/render/drm_format_set.h>
+    #include <wlr/types/wlr_seat.h>
     #include <drm/drm_fourcc.h>
 }
 
 struct tabwm_wl_server {
     struct wl_display *display;
     struct wl_event_loop *event_loop;
+
+    struct xkb_context *xkb_context;
 
     struct wlr_backend *backend;
 
