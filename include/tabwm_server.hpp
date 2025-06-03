@@ -1,5 +1,7 @@
 #pragma once
+#include <cstdio>
 #include <ctime>
+#include <wayland-server-core.h>
 #include <wayland-server.h>
 #include <wayland-util.h>
 
@@ -27,28 +29,6 @@ struct tabwm_wl_server {
 
     struct wl_list device_inputs;
     struct wl_list device_outputs;
-};
 
-struct tabwm_output {
-    struct wlr_output *output;
-    struct tabwm_wl_server *server;
-    struct timespec last_frame_presented;
-
-    struct wl_listener output_rmd_listener;
-    struct wl_listener frame_listener;
-
-    struct wl_list link;
-};
-
-struct tabwm_input {
-    struct wlr_input_device *input;
-    struct tabwm_wl_server *server;
-
-    struct timespec last_event_handled;
-
-    /* could be a key, etc. */
-    struct wl_listener input_event_listener;
-    struct wl_listener input_rmd_listener;
-
-    struct wl_list link;
+    FILE *log_fd;
 };
