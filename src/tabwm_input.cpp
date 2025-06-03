@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <fmt/format.h>
 #include <unistd.h>
+#include <wayland-server-core.h>
 
 void rm_input(struct wl_listener *listener, void *_) {
     struct tabwm_input *wm_input = wl_container_of(listener, wm_input, input_rmd_listener);
@@ -23,9 +24,10 @@ void input_key(struct wl_listener *listener, void *data) {
     struct wlr_keyboard_key_event *key_event = reinterpret_cast<wlr_keyboard_key_event *>(data);
     uint32_t xkb_keycode = key_event->keycode + 8;
 
-    /* escape */
-    if (xkb_keycode == 9) {
-        kill(getpid(), SIGTERM);
+    /* if ESC is pressed, terminate the display. (only once) */
+    if (xkb_keycode == 9 && !server->is_quitting) {
+        server->is_quitting = true;
+        wl_display_terminate(server->display);
     }
 
     clock_gettime(CLOCK_MONOTONIC, &wm_input->last_event_handled);

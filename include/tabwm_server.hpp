@@ -29,5 +29,7 @@ struct tabwm_wl_server {
     struct wl_list device_inputs;
     struct wl_list device_outputs;
 
+    bool is_quitting = false;
+
     FILE *log_fd;
 };
