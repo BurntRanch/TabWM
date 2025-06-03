@@ -24,8 +24,10 @@ void input_key(struct wl_listener *listener, void *data) {
     struct wlr_keyboard_key_event *key_event = reinterpret_cast<wlr_keyboard_key_event *>(data);
     uint32_t xkb_keycode = key_event->keycode + 8;
 
-    /* if ESC is pressed, terminate the display. (only once) */
-    if (xkb_keycode == 9 && !server->is_quitting) {
+    uint32_t modifiers = wlr_keyboard_get_modifiers(wlr_keyboard_from_input_device(wm_input->input));
+
+    /* if Win-ESC is pressed, terminate the display. (only once) */
+    if ((modifiers & WLR_MODIFIER_LOGO) && xkb_keycode == 9 && !server->is_quitting) {
         server->is_quitting = true;
         wl_display_terminate(server->display);
     }

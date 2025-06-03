@@ -25,16 +25,16 @@ void output_frame(struct wl_listener *listener, void *_) {
     struct wlr_box box{};
     box.x = 0;
     box.y = 0;
-    box.width = 400;
-    box.height = 400;
+    box.width = output->width;
+    box.height = output->height * 0.1;  /* fractional scaling!11!111 (/s) */
 
     /* If there were any recent inputs, set this to true so that we can change the color. */
     bool any_recent_inputs = false;
     struct tabwm_input *wm_input;
     wl_list_for_each(wm_input, &server->device_inputs, link) {
         double timediff = difftime(wm_output->last_frame_presented.tv_sec, wm_input->last_event_handled.tv_sec);
-        fmt::println(server->log_fd, "input {} has had a key event {}s ago!", fmt::ptr(wm_input->input), timediff);
-        fflush(server->log_fd);
+        // fmt::println(server->log_fd, "input {} has had a key event {}s ago!", fmt::ptr(wm_input->input), timediff);
+        // fflush(server->log_fd);
         if (timediff < 1.0) {
             any_recent_inputs = true;
             break;
@@ -61,9 +61,6 @@ void output_frame(struct wl_listener *listener, void *_) {
     wlr_output_state_finish(&state);
 
     clock_gettime(CLOCK_MONOTONIC, &wm_output->last_frame_presented);
-
-    fmt::println(server->log_fd, "Finished frame!");
-    fflush(server->log_fd);
 
     wlr_output_schedule_frame(output);
 }
