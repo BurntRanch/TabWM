@@ -1,6 +1,5 @@
 #pragma once
 #include <cstdio>
-#include <ctime>
 #include <wayland-server-core.h>
 #include <wayland-server.h>
 #include <wayland-util.h>

@@ -1,7 +1,11 @@
 #include "tabwm_input.hpp"
+#include "tabwm_server.hpp"
+#include <csignal>
+#include <cstdint>
 #include <fmt/format.h>
+#include <unistd.h>
 
-void rm_input(struct wl_listener *listener, void *data) {
+void rm_input(struct wl_listener *listener, void *_) {
     struct tabwm_input *wm_input = wl_container_of(listener, wm_input, input_rmd_listener);
     wl_list_remove(&wm_input->link);
     wl_list_remove(&wm_input->input_event_listener.link);
@@ -12,8 +16,18 @@ void rm_input(struct wl_listener *listener, void *data) {
 void input_key(struct wl_listener *listener, void *data) {
     struct tabwm_input *wm_input = wl_container_of(listener, wm_input, input_event_listener);
     struct tabwm_wl_server *server = wm_input->server;
+
     fmt::println(server->log_fd, "Key event from input {}!", fmt::ptr(wm_input->input));
     fflush(server->log_fd);
+
+    struct wlr_keyboard_key_event *key_event = reinterpret_cast<wlr_keyboard_key_event *>(data);
+    uint32_t xkb_keycode = key_event->keycode + 8;
+
+    /* escape */
+    if (xkb_keycode == 9) {
+        kill(getpid(), SIGTERM);
+    }
+
     clock_gettime(CLOCK_MONOTONIC, &wm_input->last_event_handled);
 }
 
