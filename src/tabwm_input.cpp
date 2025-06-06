@@ -68,6 +68,7 @@ void new_input(struct wl_listener *listener, void *data) {
     rule_names.model = "pc105";
 
     struct xkb_keymap *keymap = xkb_keymap_new_from_names(server->xkb_context, &rule_names, XKB_KEYMAP_COMPILE_NO_FLAGS);
+    assert(keymap);
 
     assert(wlr_keyboard_set_keymap(keyboard, keymap));
 
