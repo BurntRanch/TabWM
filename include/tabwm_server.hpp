@@ -38,6 +38,8 @@ struct tabwm_wl_server {
     struct wl_list device_inputs;
     struct wl_list device_outputs;
 
+    struct wlr_seat *seat;
+
     const char *wayland_socket;
 
     bool is_quitting = false;

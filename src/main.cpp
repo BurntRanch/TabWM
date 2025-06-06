@@ -35,6 +35,9 @@ int main() {
     server.new_input_listener.notify = new_input;
     wl_signal_add(&server.backend->events.new_input, &server.new_input_listener);
 
+    server.seat = wlr_seat_create(server.display, "seat0");
+    assert(server.seat);
+
     server.wayland_socket = wl_display_add_socket_auto(server.display);
     assert(server.wayland_socket);
 

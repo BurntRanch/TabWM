@@ -22,6 +22,8 @@ void input_key(struct wl_listener *listener, void *data) {
 
     struct wlr_keyboard *keyboard = wlr_keyboard_from_input_device(wm_input->input);
 
+    wlr_seat_set_keyboard(server->seat, keyboard);
+
     fmt::println(server->log_fd, "Key event from input {}!", fmt::ptr(wm_input->input));
     fflush(server->log_fd);
 
@@ -33,10 +35,17 @@ void input_key(struct wl_listener *listener, void *data) {
     fmt::println(server->log_fd, "modifiers: {}", modifiers);
     fflush(server->log_fd);
 
+    bool shortcut_handled = false;
     /* if Alt-ESC is pressed, terminate the display. (only once) */
     if ((modifiers & WLR_MODIFIER_ALT) && xkb_keycode == 9 && !server->is_quitting) {
         server->is_quitting = true;
+        shortcut_handled = true;
         wl_display_terminate(server->display);
+    }
+
+    if (!shortcut_handled && !server->is_quitting) {
+        wlr_seat_keyboard_notify_modifiers(server->seat, &keyboard->modifiers);
+        wlr_seat_keyboard_notify_key(server->seat, key_event->time_msec, key_event->keycode, key_event->state);
     }
 
     clock_gettime(CLOCK_MONOTONIC, &wm_input->last_event_handled);
