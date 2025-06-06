@@ -9,6 +9,11 @@ extern "C" {
     #include <wlr/backend.h>
     #include <wlr/types/wlr_input_device.h>
     #include <wlr/interfaces/wlr_keyboard.h>
+    #include <wlr/types/wlr_gamma_control_v1.h>
+    #include <wlr/types/wlr_screencopy_v1.h>
+    #include <wlr/types/wlr_primary_selection_v1.h>
+    #include <wlr/types/wlr_idle_inhibit_v1.h>
+    #include <wlr/types/wlr_idle_notify_v1.h>
     #include <wlr/render/interface.h>
     #include <wlr/render/allocator.h>
     #include <wlr/render/drm_format_set.h>
@@ -32,6 +37,8 @@ struct tabwm_wl_server {
 
     struct wl_list device_inputs;
     struct wl_list device_outputs;
+
+    const char *wayland_socket;
 
     bool is_quitting = false;
 

@@ -1,5 +1,6 @@
 #include "tabwm_output.hpp"
 #include "tabwm_input.hpp"
+#include "tabwm_server.hpp"
 #include <fmt/base.h>
 #include <fmt/format.h>
 
@@ -92,6 +93,8 @@ void new_output(struct wl_listener *listener, void *data) {
     wl_signal_add(&output->events.destroy, &wm_output->output_rmd_listener);
     wm_output->frame_listener.notify = output_frame;
     wl_signal_add(&output->events.frame, &wm_output->frame_listener);
+
+    wlr_output_create_global(output, server->display);
 
     struct wlr_output_state state{};
     wlr_output_state_init(&state);

@@ -1,5 +1,6 @@
 #include <cassert>
 
+#include <cstdlib>
 #include <tabwm_server.hpp>
 #include <tabwm_input.hpp>
 #include <tabwm_output.hpp>
@@ -8,6 +9,7 @@
 #include <fmt/format.h>
 #include <wayland-server-core.h>
 #include <wayland-util.h>
+#include <wlroots-0.18/wlr/types/wlr_gamma_control_v1.h>
 
 int main() {
     struct tabwm_wl_server server{};
@@ -33,6 +35,9 @@ int main() {
     server.new_input_listener.notify = new_input;
     wl_signal_add(&server.backend->events.new_input, &server.new_input_listener);
 
+    server.wayland_socket = wl_display_add_socket_auto(server.display);
+    assert(server.wayland_socket);
+
     server.log_fd = stdout;
     
     server.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
@@ -42,6 +47,16 @@ int main() {
         wl_display_destroy(server.display);
         return EXIT_FAILURE;
     }
+
+    fmt::println("Running on display {}", server.wayland_socket);
+    setenv("WAYLAND_DISPLAY", server.wayland_socket, true);
+
+    wl_display_init_shm(server.display);
+    wlr_gamma_control_manager_v1_create(server.display);
+    wlr_screencopy_manager_v1_create(server.display);
+    wlr_primary_selection_v1_device_manager_create(server.display);
+    wlr_idle_inhibit_v1_create(server.display);
+    wlr_idle_notifier_v1_create(server.display);
 
     /* this function enters a loop so we just wait for it to end before we destroy and return EXIT_SUCCESS */
     wl_display_run(server.display);
