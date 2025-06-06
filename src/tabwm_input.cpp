@@ -33,8 +33,8 @@ void input_key(struct wl_listener *listener, void *data) {
     fmt::println(server->log_fd, "modifiers: {}", modifiers);
     fflush(server->log_fd);
 
-    /* if Win-ESC is pressed, terminate the display. (only once) */
-    if ((modifiers & WLR_MODIFIER_LOGO) && xkb_keycode == 9 && !server->is_quitting) {
+    /* if Alt-ESC is pressed, terminate the display. (only once) */
+    if ((modifiers & WLR_MODIFIER_ALT) && xkb_keycode == 9 && !server->is_quitting) {
         server->is_quitting = true;
         wl_display_terminate(server->display);
     }
