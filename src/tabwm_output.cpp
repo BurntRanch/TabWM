@@ -1,8 +1,16 @@
 #include "tabwm_output.hpp"
 #include "tabwm_input.hpp"
 #include "tabwm_server.hpp"
+#include "util.hpp"
+
+#include <cassert>
+#include <ctime>
 #include <fmt/base.h>
 #include <fmt/format.h>
+#include <wayland-server-core.h>
+#include <wayland-server-protocol.h>
+#include <wayland-server.h>
+#include <wayland-util.h>
 
 void rm_output(struct wl_listener *listener, void *_) {
     struct tabwm_output *wm_output = wl_container_of(listener, wm_output, output_rmd_listener);
@@ -22,6 +30,9 @@ void output_frame(struct wl_listener *listener, void *_) {
 
     struct wlr_render_pass *render_pass = wlr_output_begin_render_pass(output, &state, NULL, NULL);
     // wlr_renderer_begin_buffer_pass(renderer, wm_output->state.buffer, NULL);
+
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
 
     struct wlr_box box{};
     box.x = 0;
@@ -56,12 +67,49 @@ void output_frame(struct wl_listener *listener, void *_) {
 
     wlr_render_pass_add_rect(render_pass, &rect_options);
 
+    struct wl_resource *surface_resource;
+    wl_resource_for_each(surface_resource, &server->surfaces) {
+        struct wlr_surface *surface = wlr_surface_from_resource(surface_resource);
+
+        fmt::println("Trying to render surface {}!", fmt::ptr(surface));
+
+        if (!wlr_surface_has_buffer(surface))
+            continue;   /* nothing to render */
+
+        fmt::println("rendering surface!");
+
+        struct wlr_fbox src_box{};
+        src_box.x = 0;
+        src_box.y = 0;
+        src_box.width = surface->current.width;
+        src_box.height = surface->current.height;
+
+        struct wlr_box dst_box{};
+        dst_box.x = 0;
+        dst_box.y = 0;
+        dst_box.width = surface->current.width;
+        dst_box.height = surface->current.height;
+
+        struct wlr_render_texture_options texture_options{};
+        texture_options.texture = surface->buffer->texture;
+        texture_options.alpha = NULL;
+        texture_options.blend_mode = WLR_RENDER_BLEND_MODE_NONE;
+        texture_options.filter_mode = WLR_SCALE_FILTER_BILINEAR;
+        texture_options.clip = NULL;
+        texture_options.src_box = src_box;
+        texture_options.dst_box = dst_box;
+        texture_options.transform = WL_OUTPUT_TRANSFORM_NORMAL;
+
+        wlr_render_pass_add_texture(render_pass, &texture_options);
+        wlr_surface_send_frame_done(surface, &now);
+    }
+
     wlr_render_pass_submit(render_pass);
 
     wlr_output_commit_state(output, &state);
     wlr_output_state_finish(&state);
 
-    clock_gettime(CLOCK_MONOTONIC, &wm_output->last_frame_presented);
+    wm_output->last_frame_presented = now;
 
     wlr_output_schedule_frame(output);
 }
@@ -80,14 +128,8 @@ void new_output(struct wl_listener *listener, void *data) {
     clock_gettime(CLOCK_MONOTONIC, &wm_output->last_frame_presented);
     wm_output->server = server;
     wm_output->output = output;
-    
-    int size = wl_list_length(&server->device_outputs);
-    wl_list *tail = &server->device_outputs;
-    for (int i = 0; i < size; i++) {
-        tail = tail->next;
-    }
 
-    wl_list_insert(tail, &wm_output->link);
+    wl_list_insert(wl_list_get_last_item(&server->device_outputs), &wm_output->link);
 
     wm_output->output_rmd_listener.notify = rm_output;
     wl_signal_add(&output->events.destroy, &wm_output->output_rmd_listener);
@@ -108,4 +150,13 @@ void new_output(struct wl_listener *listener, void *data) {
 
     wlr_output_commit_state(output, &state);
     wlr_output_state_finish(&state);
+
+    /* inform every surface that it has entered this output */
+    struct wl_resource *surface_resource;
+    wl_resource_for_each(surface_resource, &server->surfaces) {
+        struct wlr_surface *surface = wlr_surface_from_resource(surface_resource);
+        assert(surface);
+
+        wlr_surface_send_enter(surface, output);
+    }
 }
