@@ -1,6 +1,7 @@
 #include "util.hpp"
 #include <cassert>
 
+#include <cstdio>
 #include <cstdlib>
 #include <tabwm_server.hpp>
 #include <tabwm_input.hpp>
@@ -13,19 +14,21 @@
 #include <wayland-util.h>
 
 void rm_surface(struct wl_listener *listener, void *data) {
-    fmt::println("removing surface!");
-
     struct tabwm_wl_server *server = wl_container_of(listener, server, rm_surface_listener);
     struct wlr_surface *surface = reinterpret_cast<wlr_surface *>(data);
+
+    fmt::println(server->log_fd, "removing surface!");
+    fflush(server->log_fd);
 
     wl_list_remove(&surface->resource->link);
 }
 
 void new_surface(struct wl_listener *listener, void *data) {
-    fmt::println("new surface! ({})", fmt::ptr(data));
-
     struct tabwm_wl_server *server = wl_container_of(listener, server, new_surface_listener);
     struct wlr_surface *surface = reinterpret_cast<wlr_surface *>(data);
+
+    fmt::println(server->log_fd, "new surface! ({})", fmt::ptr(data));
+    fflush(server->log_fd);
 
     wl_signal_add(&surface->events.destroy, &server->rm_surface_listener);
     wl_signal_add(&surface->events.new_subsurface, &server->new_surface_listener);
@@ -86,12 +89,14 @@ int main() {
     server.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
     if (!wlr_backend_start(server.backend)) {
-        fmt::println("fatal: wlr_backend_start returned false");
+        fmt::println(server.log_fd, "fatal: wlr_backend_start returned false");
+        fflush(server.log_fd);
         wl_display_destroy(server.display);
         return EXIT_FAILURE;
     }
 
-    fmt::println("Running on display {}", server.wayland_socket);
+    fmt::println(server.log_fd, "Running on display {}", server.wayland_socket);
+    fflush(server.log_fd);
     setenv("WAYLAND_DISPLAY", server.wayland_socket, true);
 
     wl_display_init_shm(server.display);

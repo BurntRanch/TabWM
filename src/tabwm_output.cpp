@@ -4,6 +4,7 @@
 #include "util.hpp"
 
 #include <cassert>
+#include <cstdio>
 #include <ctime>
 #include <fmt/base.h>
 #include <fmt/format.h>
@@ -71,12 +72,14 @@ void output_frame(struct wl_listener *listener, void *_) {
     wl_resource_for_each(surface_resource, &server->surfaces) {
         struct wlr_surface *surface = wlr_surface_from_resource(surface_resource);
 
-        fmt::println("Trying to render surface {}!", fmt::ptr(surface));
+        fmt::println(server->log_fd, "Trying to render surface {}!", fmt::ptr(surface));
+        fflush(server->log_fd);
 
         if (!wlr_surface_has_buffer(surface))
             continue;   /* nothing to render */
 
-        fmt::println("rendering surface!");
+        fmt::println(server->log_fd, "rendering surface!");
+        fflush(server->log_fd);
 
         struct wlr_fbox src_box{};
         src_box.x = 0;
