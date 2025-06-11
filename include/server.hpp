@@ -28,7 +28,7 @@ extern "C" {
     #include <drm/drm_fourcc.h>
 }
 
-struct tabwm_wl_server {
+struct tab_server {
     struct wl_display *display;
     struct wl_event_loop *event_loop;
 

@@ -1,11 +1,11 @@
 #pragma once
-#include <tabwm_server.hpp>
+#include <server.hpp>
 #include <wayland-server-core.h>
 #include <wayland-util.h>
 
-struct tabwm_surface {
+struct tab_surface {
     struct wlr_surface *surface;
-    struct tabwm_wl_server *server;
+    struct tab_server *server;
 
     struct wlr_scene_tree *scene_surface_tree;
     struct wlr_scene_rect *border_rect;

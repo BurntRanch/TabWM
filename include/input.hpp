@@ -1,9 +1,9 @@
 #pragma once
-#include "tabwm_server.hpp"
+#include "server.hpp"
 
-struct tabwm_input {
+struct tab_input {
     struct wlr_input_device *input;
-    struct tabwm_wl_server *server;
+    struct tab_server *server;
 
     struct timespec last_event_handled;
 

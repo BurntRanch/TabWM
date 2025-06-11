@@ -1,4 +1,4 @@
-#include "tabwm_server.hpp"
+#include "server.hpp"
 #include <array>
 #include <cstdio>
 #include <cstdlib>
@@ -7,11 +7,11 @@
 #include <wayland-server-core.h>
 #include <wayland-util.h>
 
-#include <tabwm_surface.hpp>
+#include <surface.hpp>
 
 void rm_surface(struct wl_listener *listener, void *_) {
-    struct tabwm_surface *wm_surface = wl_container_of(listener, wm_surface, destroy_listener);
-    struct tabwm_wl_server *server = wm_surface->server;
+    struct tab_surface *wm_surface = wl_container_of(listener, wm_surface, destroy_listener);
+    struct tab_server *server = wm_surface->server;
 
     fmt::println(server->log_fd, "removing surface!");
     fflush(server->log_fd);
@@ -26,8 +26,8 @@ void rm_surface(struct wl_listener *listener, void *_) {
 
 /* This just updates the border to fit the surface. No need for any more. */
 void commit_surface(struct wl_listener *listener, void *_) {
-    struct tabwm_surface *wm_surface = wl_container_of(listener, wm_surface, commit_listener);
-    struct tabwm_wl_server *server = wm_surface->server;
+    struct tab_surface *wm_surface = wl_container_of(listener, wm_surface, commit_listener);
+    struct tab_server *server = wm_surface->server;
 
     fmt::println(server->log_fd, "Surface {} commited!", fmt::ptr(wm_surface));
     fmt::println(server->log_fd, "w: {}, h: {}", wm_surface->surface->current.width, wm_surface->surface->current.height);
@@ -39,13 +39,13 @@ void commit_surface(struct wl_listener *listener, void *_) {
 }
 
 void new_surface(struct wl_listener *listener, void *data) {
-    struct tabwm_wl_server *server = wl_container_of(listener, server, new_surface_listener);
+    struct tab_server *server = wl_container_of(listener, server, new_surface_listener);
     struct wlr_surface *surface = reinterpret_cast<wlr_surface *>(data);
 
     fmt::println(server->log_fd, "new surface! ({})", fmt::ptr(data));
     fflush(server->log_fd);
 
-    struct tabwm_surface *wm_surface = reinterpret_cast<tabwm_surface *>(calloc(1, sizeof(tabwm_surface)));
+    struct tab_surface *wm_surface = reinterpret_cast<tab_surface *>(calloc(1, sizeof(tab_surface)));
 
     wm_surface->surface = surface;
     wm_surface->server = server;

@@ -1,7 +1,7 @@
-#include "tabwm_output.hpp"
-#include "tabwm_input.hpp"
-#include "tabwm_server.hpp"
-#include "tabwm_surface.hpp"
+#include "output.hpp"
+#include "input.hpp"
+#include "server.hpp"
+#include "surface.hpp"
 #include "util.hpp"
 
 #include <cassert>
@@ -15,7 +15,7 @@
 #include <wayland-util.h>
 
 void rm_output(struct wl_listener *listener, void *_) {
-    struct tabwm_output *wm_output = wl_container_of(listener, wm_output, output_rmd_listener);
+    struct tab_output *wm_output = wl_container_of(listener, wm_output, output_rmd_listener);
     wl_list_remove(&wm_output->link);
     wl_list_remove(&wm_output->frame_listener.link);
     wl_list_remove(&wm_output->output_rmd_listener.link);
@@ -23,8 +23,8 @@ void rm_output(struct wl_listener *listener, void *_) {
 }
 
 void output_frame(struct wl_listener *listener, void *_) {
-    struct tabwm_output *wm_output = wl_container_of(listener, wm_output, frame_listener);
-    struct tabwm_wl_server *server = wm_output->server;
+    struct tab_output *wm_output = wl_container_of(listener, wm_output, frame_listener);
+    struct tab_server *server = wm_output->server;
 
     struct wlr_scene_output_state_options options{};
     options.timer = &wm_output->scene_timer;
@@ -40,14 +40,14 @@ void output_frame(struct wl_listener *listener, void *_) {
 
     wm_output->last_frame_presented = now;
 
-    struct tabwm_surface *surface;
+    struct tab_surface *surface;
     wl_list_for_each(surface, &server->surfaces, link) {
         wlr_surface_send_frame_done(surface->surface, &now);
     }
 }
 
 void new_output(struct wl_listener *listener, void *data) {
-    struct tabwm_wl_server *server = wl_container_of(listener, server, new_output_listener);
+    struct tab_server *server = wl_container_of(listener, server, new_output_listener);
     struct wlr_output *output = reinterpret_cast<wlr_output *>(data);
 
     fmt::println(server->log_fd, "New output!");
@@ -55,7 +55,7 @@ void new_output(struct wl_listener *listener, void *data) {
    
     wlr_output_init_render(output, server->allocator, server->renderer);
 
-    struct tabwm_output *wm_output = reinterpret_cast<tabwm_output *>(calloc(1, sizeof(tabwm_output)));
+    struct tab_output *wm_output = reinterpret_cast<tab_output *>(calloc(1, sizeof(tab_output)));
 
     clock_gettime(CLOCK_MONOTONIC, &wm_output->last_frame_presented);
     wm_output->server = server;

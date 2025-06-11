@@ -1,9 +1,9 @@
 #pragma once
-#include "tabwm_server.hpp"
+#include "server.hpp"
 
-struct tabwm_output {
+struct tab_output {
     struct wlr_output *output;
-    struct tabwm_wl_server *server;
+    struct tab_server *server;
     struct timespec last_frame_presented;
 
     struct wlr_scene_output *scene_output;

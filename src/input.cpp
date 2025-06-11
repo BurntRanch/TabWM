@@ -1,5 +1,5 @@
-#include "tabwm_input.hpp"
-#include "tabwm_server.hpp"
+#include "input.hpp"
+#include "server.hpp"
 #include <cassert>
 #include <csignal>
 #include <cstdint>
@@ -9,7 +9,7 @@
 #include <xkbcommon/xkbcommon.h>
 
 void rm_input(struct wl_listener *listener, void *_) {
-    struct tabwm_input *wm_input = wl_container_of(listener, wm_input, input_rmd_listener);
+    struct tab_input *wm_input = wl_container_of(listener, wm_input, input_rmd_listener);
     wl_list_remove(&wm_input->link);
     wl_list_remove(&wm_input->input_event_listener.link);
     wl_list_remove(&wm_input->input_rmd_listener.link);
@@ -17,8 +17,8 @@ void rm_input(struct wl_listener *listener, void *_) {
 }
 
 void input_key(struct wl_listener *listener, void *data) {
-    struct tabwm_input *wm_input = wl_container_of(listener, wm_input, input_event_listener);
-    struct tabwm_wl_server *server = wm_input->server;
+    struct tab_input *wm_input = wl_container_of(listener, wm_input, input_event_listener);
+    struct tab_server *server = wm_input->server;
 
     struct wlr_keyboard *keyboard = wlr_keyboard_from_input_device(wm_input->input);
 
@@ -52,7 +52,7 @@ void input_key(struct wl_listener *listener, void *data) {
 }
 
 void new_input(struct wl_listener *listener, void *data) {
-    struct tabwm_wl_server *server = wl_container_of(listener, server, new_input_listener);
+    struct tab_server *server = wl_container_of(listener, server, new_input_listener);
     struct wlr_input_device *input = reinterpret_cast<wlr_input_device *>(data);
 
     fmt::println(server->log_fd, "New input (name: {}, ptr: {})!", input->name, fmt::ptr(data));
@@ -81,7 +81,7 @@ void new_input(struct wl_listener *listener, void *data) {
 
     assert(wlr_keyboard_set_keymap(keyboard, keymap));
 
-    struct tabwm_input *wm_input = reinterpret_cast<tabwm_input *>(calloc(1, sizeof(tabwm_input)));
+    struct tab_input *wm_input = reinterpret_cast<tab_input *>(calloc(1, sizeof(tab_input)));
     wm_input->server = server;
     wm_input->input = input;
 

@@ -3,10 +3,10 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <tabwm_server.hpp>
-#include <tabwm_input.hpp>
-#include <tabwm_output.hpp>
-#include <tabwm_surface.hpp>
+#include <server.hpp>
+#include <input.hpp>
+#include <output.hpp>
+#include <surface.hpp>
 
 #include <fmt/base.h>
 #include <fmt/format.h>
@@ -15,7 +15,7 @@
 #include <wayland-util.h>
 
 int main() {
-    struct tabwm_wl_server server{};
+    struct tab_server server{};
 
     server.display = wl_display_create();
     assert(server.display);
