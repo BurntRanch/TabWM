@@ -33,12 +33,14 @@ void new_surface(struct wl_listener *listener, void *data) {
     wl_signal_add(&surface->events.destroy, &server->rm_surface_listener);
     wl_signal_add(&surface->events.new_subsurface, &server->new_surface_listener);
 
-    /* tell the surface its entered all outputs */
+    /* tell the surface its entered all outputs. */
     /* is this kind of weird? I don't know. I should test how this works with multiple monitors */
     struct tabwm_output *wm_output;
     wl_list_for_each(wm_output, &server->device_outputs, link) {
         wlr_surface_send_enter(surface, wm_output->output);
     }
+
+    wlr_surface_send_frame_done(surface, 0);
 
     wl_list_insert(wl_list_get_last_item(&server->surfaces), &surface->resource->link);
 }
@@ -63,6 +65,13 @@ int main() {
     assert(server.compositor);
 
     wlr_xdg_shell_create(server.display, 6);
+    
+    wl_display_init_shm(server.display);
+    wlr_gamma_control_manager_v1_create(server.display);
+    wlr_screencopy_manager_v1_create(server.display);
+    wlr_primary_selection_v1_device_manager_create(server.display);
+    wlr_idle_inhibit_v1_create(server.display);
+    wlr_idle_notifier_v1_create(server.display);
 
     wl_list_init(&server.surfaces);
     wl_list_init(&server.device_inputs);
@@ -98,13 +107,6 @@ int main() {
     fmt::println(server.log_fd, "Running on display {}", server.wayland_socket);
     fflush(server.log_fd);
     setenv("WAYLAND_DISPLAY", server.wayland_socket, true);
-
-    wl_display_init_shm(server.display);
-    wlr_gamma_control_manager_v1_create(server.display);
-    wlr_screencopy_manager_v1_create(server.display);
-    wlr_primary_selection_v1_device_manager_create(server.display);
-    wlr_idle_inhibit_v1_create(server.display);
-    wlr_idle_notifier_v1_create(server.display);
 
     /* this function enters a loop so we just wait for it to end before we destroy and return EXIT_SUCCESS */
     wl_display_run(server.display);

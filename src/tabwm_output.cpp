@@ -75,6 +75,9 @@ void output_frame(struct wl_listener *listener, void *_) {
         fmt::println(server->log_fd, "Trying to render surface {}!", fmt::ptr(surface));
         fflush(server->log_fd);
 
+        fmt::println(server->log_fd, "Surface texture: {}", fmt::ptr(wlr_surface_get_texture(surface)));
+        fflush(server->log_fd);
+
         if (!wlr_surface_has_buffer(surface))
             continue;   /* nothing to render */
 
