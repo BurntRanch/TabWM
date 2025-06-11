@@ -6,44 +6,13 @@
 #include <tabwm_server.hpp>
 #include <tabwm_input.hpp>
 #include <tabwm_output.hpp>
+#include <tabwm_surface.hpp>
 
 #include <fmt/base.h>
 #include <fmt/format.h>
 #include <wayland-server-core.h>
 #include <wayland-server-protocol.h>
 #include <wayland-util.h>
-
-void rm_surface(struct wl_listener *listener, void *data) {
-    struct tabwm_wl_server *server = wl_container_of(listener, server, rm_surface_listener);
-    struct wlr_surface *surface = reinterpret_cast<wlr_surface *>(data);
-
-    fmt::println(server->log_fd, "removing surface!");
-    fflush(server->log_fd);
-
-    wl_list_remove(&surface->resource->link);
-}
-
-void new_surface(struct wl_listener *listener, void *data) {
-    struct tabwm_wl_server *server = wl_container_of(listener, server, new_surface_listener);
-    struct wlr_surface *surface = reinterpret_cast<wlr_surface *>(data);
-
-    fmt::println(server->log_fd, "new surface! ({})", fmt::ptr(data));
-    fflush(server->log_fd);
-
-    wl_signal_add(&surface->events.destroy, &server->rm_surface_listener);
-    wl_signal_add(&surface->events.new_subsurface, &server->new_surface_listener);
-
-    /* tell the surface its entered all outputs. */
-    /* is this kind of weird? I don't know. I should test how this works with multiple monitors */
-    struct tabwm_output *wm_output;
-    wl_list_for_each(wm_output, &server->device_outputs, link) {
-        wlr_surface_send_enter(surface, wm_output->output);
-    }
-
-    wlr_surface_send_frame_done(surface, 0);
-
-    wl_list_insert(wl_list_get_last_item(&server->surfaces), &surface->resource->link);
-}
 
 int main() {
     struct tabwm_wl_server server{};
@@ -64,6 +33,8 @@ int main() {
     server.compositor = wlr_compositor_create(server.display, 6, server.renderer);
     assert(server.compositor);
 
+    server.scene = wlr_scene_create();
+
     wlr_xdg_shell_create(server.display, 6);
     
     wl_display_init_shm(server.display);
@@ -83,8 +54,6 @@ int main() {
     wl_signal_add(&server.backend->events.new_output, &server.new_output_listener);
     server.new_input_listener.notify = new_input;
     wl_signal_add(&server.backend->events.new_input, &server.new_input_listener);
-
-    server.rm_surface_listener.notify = rm_surface;
 
     server.seat = wlr_seat_create(server.display, "seat0");
     assert(server.seat);

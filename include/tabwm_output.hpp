@@ -6,6 +6,9 @@ struct tabwm_output {
     struct tabwm_wl_server *server;
     struct timespec last_frame_presented;
 
+    struct wlr_scene_output *scene_output;
+    struct wlr_scene_timer scene_timer;
+
     struct wl_listener output_rmd_listener;
     struct wl_listener frame_listener;
 

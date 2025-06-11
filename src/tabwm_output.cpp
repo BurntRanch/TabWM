@@ -1,6 +1,7 @@
 #include "tabwm_output.hpp"
 #include "tabwm_input.hpp"
 #include "tabwm_server.hpp"
+#include "tabwm_surface.hpp"
 #include "util.hpp"
 
 #include <cassert>
@@ -24,100 +25,25 @@ void rm_output(struct wl_listener *listener, void *_) {
 void output_frame(struct wl_listener *listener, void *_) {
     struct tabwm_output *wm_output = wl_container_of(listener, wm_output, frame_listener);
     struct tabwm_wl_server *server = wm_output->server;
-    struct wlr_output *output = wm_output->output;
 
-    struct wlr_output_state state{};
-    wlr_output_state_init(&state);
-
-    struct wlr_render_pass *render_pass = wlr_output_begin_render_pass(output, &state, NULL, NULL);
-    // wlr_renderer_begin_buffer_pass(renderer, wm_output->state.buffer, NULL);
+    struct wlr_scene_output_state_options options{};
+    options.timer = &wm_output->scene_timer;
+    options.color_transform = wlr_color_transform_init_srgb();
+    if (!wlr_scene_output_commit(wm_output->scene_output, &options)) {
+        fmt::println(server->log_fd, "Failed to render!");
+        fflush(server->log_fd);
+        return;
+    }
 
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
 
-    struct wlr_box box{};
-    box.x = 0;
-    box.y = 0;
-    box.width = output->width;
-    box.height = output->height * 0.1;  /* fractional scaling!11!111 (/s) */
-
-    /* If there were any recent inputs, set this to true so that we can change the color. */
-    bool any_recent_inputs = false;
-    struct tabwm_input *wm_input;
-    wl_list_for_each(wm_input, &server->device_inputs, link) {
-        double timediff = difftime(wm_output->last_frame_presented.tv_sec, wm_input->last_event_handled.tv_sec);
-        // fmt::println(server->log_fd, "input {} has had a key event {}s ago!", fmt::ptr(wm_input->input), timediff);
-        // fflush(server->log_fd);
-        if (timediff < 1.0) {
-            any_recent_inputs = true;
-            break;
-        }
-    }
-
-    struct wlr_render_color color{};
-    color.r = 1.0f * !any_recent_inputs;
-    color.g = 1.0f * any_recent_inputs;
-    color.b = 1.0f * any_recent_inputs;
-    color.a = 1.0f;
-
-    struct wlr_render_rect_options rect_options{};
-    rect_options.blend_mode = WLR_RENDER_BLEND_MODE_NONE;
-    rect_options.box = box;
-    rect_options.clip = NULL;
-    rect_options.color = color;
-
-    wlr_render_pass_add_rect(render_pass, &rect_options);
-
-    struct wl_resource *surface_resource;
-    wl_resource_for_each(surface_resource, &server->surfaces) {
-        struct wlr_surface *surface = wlr_surface_from_resource(surface_resource);
-
-        fmt::println(server->log_fd, "Trying to render surface {}!", fmt::ptr(surface));
-        fflush(server->log_fd);
-
-        fmt::println(server->log_fd, "Surface texture: {}", fmt::ptr(wlr_surface_get_texture(surface)));
-        fflush(server->log_fd);
-
-        if (!wlr_surface_has_buffer(surface))
-            continue;   /* nothing to render */
-
-        fmt::println(server->log_fd, "rendering surface!");
-        fflush(server->log_fd);
-
-        struct wlr_fbox src_box{};
-        src_box.x = 0;
-        src_box.y = 0;
-        src_box.width = surface->current.width;
-        src_box.height = surface->current.height;
-
-        struct wlr_box dst_box{};
-        dst_box.x = 0;
-        dst_box.y = 0;
-        dst_box.width = surface->current.width;
-        dst_box.height = surface->current.height;
-
-        struct wlr_render_texture_options texture_options{};
-        texture_options.texture = surface->buffer->texture;
-        texture_options.alpha = NULL;
-        texture_options.blend_mode = WLR_RENDER_BLEND_MODE_NONE;
-        texture_options.filter_mode = WLR_SCALE_FILTER_BILINEAR;
-        texture_options.clip = NULL;
-        texture_options.src_box = src_box;
-        texture_options.dst_box = dst_box;
-        texture_options.transform = WL_OUTPUT_TRANSFORM_NORMAL;
-
-        wlr_render_pass_add_texture(render_pass, &texture_options);
-        wlr_surface_send_frame_done(surface, &now);
-    }
-
-    wlr_render_pass_submit(render_pass);
-
-    wlr_output_commit_state(output, &state);
-    wlr_output_state_finish(&state);
-
     wm_output->last_frame_presented = now;
 
-    wlr_output_schedule_frame(output);
+    struct tabwm_surface *surface;
+    wl_list_for_each(surface, &server->surfaces, link) {
+        wlr_surface_send_frame_done(surface->surface, &now);
+    }
 }
 
 void new_output(struct wl_listener *listener, void *data) {
@@ -135,12 +61,16 @@ void new_output(struct wl_listener *listener, void *data) {
     wm_output->server = server;
     wm_output->output = output;
 
+    wm_output->scene_output = wlr_scene_output_create(server->scene, output);
+
     wl_list_insert(wl_list_get_last_item(&server->device_outputs), &wm_output->link);
 
     wm_output->output_rmd_listener.notify = rm_output;
     wl_signal_add(&output->events.destroy, &wm_output->output_rmd_listener);
     wm_output->frame_listener.notify = output_frame;
     wl_signal_add(&output->events.frame, &wm_output->frame_listener);
+
+    wm_output->scene_timer.render_timer = wlr_render_timer_create(wm_output->output->renderer);
 
     wlr_output_create_global(output, server->display);
 
@@ -156,13 +86,4 @@ void new_output(struct wl_listener *listener, void *data) {
 
     wlr_output_commit_state(output, &state);
     wlr_output_state_finish(&state);
-
-    /* inform every surface that it has entered this output */
-    struct wl_resource *surface_resource;
-    wl_resource_for_each(surface_resource, &server->surfaces) {
-        struct wlr_surface *surface = wlr_surface_from_resource(surface_resource);
-        assert(surface);
-
-        wlr_surface_send_enter(surface, output);
-    }
 }

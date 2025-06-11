@@ -18,6 +18,8 @@ extern "C" {
     #include <wlr/types/wlr_seat.h>
     #include <wlr/types/wlr_compositor.h>
     #include <wlr/types/wlr_xdg_shell.h>
+    #include <wlr/types/wlr_scene.h>
+    #include <wlr/render/color.h>
     #include <wlr/render/wlr_renderer.h>
     #include <wlr/render/interface.h>
     #include <wlr/render/allocator.h>
@@ -35,16 +37,16 @@ struct tabwm_wl_server {
     struct wlr_backend *backend;
     struct wlr_compositor *compositor;
 
+    struct wlr_scene *scene;
+
     struct wl_listener new_surface_listener;
     struct wl_listener new_output_listener;
     struct wl_listener new_input_listener;
 
-    struct wl_listener rm_surface_listener;
-
     struct wlr_renderer *renderer;
     struct wlr_allocator *allocator;
 
-    /* a list of surfaces as a wl_resource. */
+    /* a list of surfaces as individual tabwm_surfaces. */
     struct wl_list surfaces;
 
     struct wl_list device_inputs;

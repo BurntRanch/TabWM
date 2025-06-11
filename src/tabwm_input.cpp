@@ -92,11 +92,5 @@ void new_input(struct wl_listener *listener, void *data) {
     wm_input->input_rmd_listener.notify = rm_input;
     wl_signal_add(&input->events.destroy, &wm_input->input_rmd_listener);
 
-    int size = wl_list_length(&server->device_inputs);
-    wl_list *tail = &server->device_inputs;
-    for (int i = 0; i < size; i++) {
-        tail = tail->next;
-    }
-
-    wl_list_insert(tail, &wm_input->link);
+    wl_list_insert(server->device_inputs.prev, &wm_input->link);
 }
